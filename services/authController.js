@@ -143,7 +143,7 @@ exports.forgetPassword = asyncHandler(async (req, res, next) => {
   );
 
   //send the mail to user's email
-  const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/resetPassword/${resetToken}`;
+  const resetUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/reset-password/${resetToken}`;
 
   const message = `Forgot your password? Submit a PATCH request with your new password to:
    \n${resetUrl}.\nIf you didn't forget your password, please ignore this email!`;
@@ -168,6 +168,171 @@ exports.forgetPassword = asyncHandler(async (req, res, next) => {
       ),
     );
   }
+});
+
+exports.serveResetPasswordPage = asyncHandler(async (req, res, next) => {
+  const { token } = req.params;
+
+  // Basic HTML template
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Reset Password - Edutech</title>
+      <style>
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background-color: #f3f4f6;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          margin: 0;
+        }
+        .card {
+          background-color: white;
+          padding: 2rem;
+          border-radius: 8px;
+          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          width: 100%;
+          max-width: 400px;
+        }
+        h2 {
+          text-align: center;
+          color: #1f2937;
+          margin-bottom: 1.5rem;
+        }
+        .form-group {
+          margin-bottom: 1rem;
+        }
+        label {
+          display: block;
+          margin-bottom: 0.5rem;
+          color: #4b5563;
+          font-size: 0.875rem;
+        }
+        input {
+          width: 100%;
+          padding: 0.75rem;
+          border: 1px solid #d1d5db;
+          border-radius: 4px;
+          box-sizing: border-box; /* details */
+          font-size: 1rem;
+        }
+        input:focus {
+          outline: none;
+          border-color: #3b82f6;
+          ring: 2px solid #3b82f6;
+        }
+        button {
+          width: 100%;
+          padding: 0.75rem;
+          background-color: #3b82f6;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: background-color 0.2s;
+        }
+        button:hover {
+          background-color: #2563eb;
+        }
+        .message {
+          margin-top: 1rem;
+          text-align: center;
+          font-size: 0.875rem;
+          display: none;
+        }
+        .error {
+          color: #ef4444;
+        }
+        .success {
+          color: #10b981;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <h2>Reset Password</h2>
+        <form id="resetForm">
+          <div class="form-group">
+            <label for="password">New Password</label>
+            <input type="password" id="password" name="password" required placeholder="Enter new password">
+          </div>
+          <div class="form-group">
+            <label for="confirmPassword">Confirm Password</label>
+            <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Confirm new password">
+          </div>
+          <button type="submit" id="submitBtn">Reset Password</button>
+        </form>
+        <div id="message" class="message"></div>
+      </div>
+
+      <script>
+        const form = document.getElementById('resetForm');
+        const messageDiv = document.getElementById('message');
+        const submitBtn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          messageDiv.style.display = 'none';
+          
+          const password = document.getElementById('password').value;
+          const confirmPassword = document.getElementById('confirmPassword').value;
+
+          if (password !== confirmPassword) {
+            showMessage('Passwords do not match', 'error');
+            return;
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.innerText = 'Resetting...';
+
+          try {
+            const response = await fetch('/api/v1/auth/reset-password/${token}', {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ password, confirmPassword: password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+              showMessage('Password reset successfully! Redirecting...', 'success');
+              form.reset();
+              setTimeout(() => {
+                // Redirect logic here if needed, or just specific message
+                 window.location.href = '/login'; // Assuming there is a login page, strictly implementation choice
+              }, 2000);
+            } else {
+              showMessage(data.message || 'Something went wrong', 'error');
+              submitBtn.disabled = false;
+              submitBtn.innerText = 'Reset Password';
+            }
+          } catch (error) {
+            console.error('Error:', error);
+            showMessage('Network error, please try again', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerText = 'Reset Password';
+          }
+        });
+
+        function showMessage(msg, type) {
+          messageDiv.textContent = msg;
+          messageDiv.className = 'message ' + type;
+          messageDiv.style.display = 'block';
+        }
+      </script>
+    </body>
+    </html>
+  `;
+
+  res.send(html);
 });
 
 exports.resetPassword = asyncHandler(async (req, res, next) => {
@@ -234,7 +399,7 @@ exports.signupOrganization = asyncHandler(async (req, res, next) => {
     verificationToken,
   );
 
-  // 5) Send Verification Email 
+  // 5) Send Verification Email
   const verifyUrl = `${req.protocol}://${req.get("host")}/api/v1/auth/verify/${verificationToken}`;
   const message = `Welcome to Edutech Organization! \n\nPlease verify your email: \n${verifyUrl}`;
 
