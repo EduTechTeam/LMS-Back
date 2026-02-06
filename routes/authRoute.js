@@ -8,12 +8,14 @@ const {
   resetPassword,
   signupOrganization,
   serveResetPasswordPage,
+  me,
 } = require("../services/authController");
 const router = express.Router();
 
 router.post("/register", signup);
 router.post("/login", login);
 router.post("/logout", logout);
+router.get("/me", me);
 router.get("/verify/:token", verifyEmail);
 router.post("/forgot-password", forgetPassword);
 

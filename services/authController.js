@@ -5,6 +5,7 @@ const bcrypt = require("bcrypt");
 const generateToken = require("../utils/generateToken.js");
 const crypto = require("crypto");
 const sendEmail = require("../utils/email");
+const jwt = require("jsonwebtoken");
 
 exports.login = asyncHandler(async (req, res, next) => {
   const { email, password } = req.body;
@@ -21,7 +22,12 @@ exports.login = asyncHandler(async (req, res, next) => {
   if (!isPasswordMatched) {
     return next(new ApiError("Invalid credentials", 401));
   }
-  const token = generateToken(user.id, user.role, user.username);
+  const token = generateToken(
+    user.id,
+    user.role,
+    user.username,
+    user.full_name,
+  );
   res.cookie("token", token, {
     httpOnly: true,
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -86,6 +92,22 @@ exports.signup = asyncHandler(async (req, res, next) => {
       ),
     );
   }
+});
+
+exports.me = asyncHandler(async (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) {
+    return next(new ApiError("ur not logged in", 401));
+  }
+  const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+  const user = await userModel.getUserById(decodedToken.id);
+  if (!user) {
+    return next(new ApiError("user not found", 404));
+  }
+  res.status(200).json({
+    success: true,
+    data: user,
+  });
 });
 
 exports.logout = asyncHandler(async (req, res, next) => {
